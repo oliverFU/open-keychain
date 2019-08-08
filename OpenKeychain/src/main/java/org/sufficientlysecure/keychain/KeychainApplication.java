@@ -111,6 +111,7 @@ public class KeychainApplication extends Application {
 
         analyticsManager = AnalyticsManager.getInstance(getApplicationContext());
         analyticsManager.initialize(this);
+        AnalyticsManager.analyticsManager = analyticsManager;
     }
 
     /**

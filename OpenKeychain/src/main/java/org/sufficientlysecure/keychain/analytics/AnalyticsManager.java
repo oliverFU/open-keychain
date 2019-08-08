@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 
+import org.bouncycastle.openpgp.PGPPublicKey;
 import org.piwik.sdk.Piwik;
 import org.piwik.sdk.Tracker;
 import org.piwik.sdk.TrackerConfig;
@@ -27,6 +28,8 @@ public class AnalyticsManager implements OnSharedPreferenceChangeListener {
     public static AnalyticsManager getInstance(Context context) {
         return new AnalyticsManager(context);
     }
+
+    public static AnalyticsManager analyticsManager;
 
     private AnalyticsManager(Context context) {
         refreshSettings(context);
@@ -100,7 +103,10 @@ public class AnalyticsManager implements OnSharedPreferenceChangeListener {
                 coarseGranularityKeyserver = "mit";
             } else if (current.contains("pool.sks-keyservers.net")) {
                 coarseGranularityKeyserver = "pool";
-            } else {
+            } else if (current.contains("keys.openpgp.org")) {
+                coarseGranularityKeyserver = "openpgp";
+            }
+            else {
                 coarseGranularityKeyserver = "custom";
             }
             TrackHelper.track().interaction("pref_" + Pref.KEY_SERVERS, coarseGranularityKeyserver).with(piwikTracker);
@@ -152,6 +158,25 @@ public class AnalyticsManager implements OnSharedPreferenceChangeListener {
                 .with(piwikTracker);
     }
 
+    public void trackResult(String resClassName, boolean error, String errorDescription){
+        if (piwikTracker == null) {
+            return;
+        }
+
+        float val = 1;
+        if (error) {
+            val = 0;
+        }
+
+        TrackHelper.track()
+                .event("result", resClassName)
+                .name(errorDescription)
+                .value(val)
+                .with(piwikTracker);
+    }
+
+
+
     public synchronized void refreshSettings(Context context) {
         boolean shouldEnableAnalytics = shouldEnableAnalytics(context);
         boolean analyticsEnabled = piwikTracker != null;
@@ -171,6 +196,31 @@ public class AnalyticsManager implements OnSharedPreferenceChangeListener {
                 piwikTracker = null;
             }
         }
+    }
+
+
+
+    private void extractPublicKeyData(PGPPublicKey publicKey, TrackHelper trackHelper) {
+        // Approach: Call this method before tracking the event
+        // Define similar method for secretKey
+        String keyType = "publicKey";
+        String creationYear = "" + publicKey.getCreationTime().getYear(); // Remove?
+        String validSeconds = "" + publicKey.getValidSeconds();
+        String algo = "" + publicKey.getAlgorithm(); //TODO: Int to Algo matching
+        String securityParameter = "" + publicKey.getBitStrength();
+        String recovoked = "" + publicKey.hasRevocation();
+
+        //TODO: Can we get the data?
+        String newKey; // Is this the first time we track the key?
+        String trustLevel;
+        String origin; // Autocrypt, keyserver, Safeslinger, other (attached to mail, import from file...)
+
+        // Add values
+        trackHelper.dimension(1,keyType);
+        trackHelper.dimension(2, creationYear);
+        trackHelper.dimension(3, validSeconds);
+        trackHelper.dimension(4,algo);
+        trackHelper.dimension(5,securityParameter);
     }
 
     private boolean shouldEnableAnalytics(Context context) {

@@ -22,6 +22,7 @@ import android.content.Intent;
 import android.os.Parcel;
 
 import org.sufficientlysecure.keychain.R;
+import org.sufficientlysecure.keychain.analytics.AnalyticsManager;
 import org.sufficientlysecure.keychain.service.input.CryptoInputParcel;
 import org.sufficientlysecure.keychain.service.input.RequiredInputParcel;
 import org.sufficientlysecure.keychain.ui.LogDisplayActivity;
@@ -32,7 +33,7 @@ import org.sufficientlysecure.keychain.ui.util.Notify.Showable;
 import org.sufficientlysecure.keychain.ui.util.Notify.Style;
 
 public class CertifyResult extends InputPendingResult {
-    int mCertifyOk, mCertifyError, mUploadOk, mUploadError;
+    private int mCertifyOk, mCertifyError, mUploadOk, mUploadError;
 
     public CertifyResult(int result, OperationLog log) {
         super(result, log);
@@ -49,6 +50,7 @@ public class CertifyResult extends InputPendingResult {
         mCertifyError = certifyError;
         mUploadOk = uploadOk;
         mUploadError = uploadError;
+        trackResult();
     }
 
     /** Construct from a parcel - trivial because we have no extra data. */
@@ -58,6 +60,7 @@ public class CertifyResult extends InputPendingResult {
         mCertifyError = source.readInt();
         mUploadOk = source.readInt();
         mUploadError = source.readInt();
+        trackResult();
     }
 
     @Override
@@ -135,6 +138,22 @@ public class CertifyResult extends InputPendingResult {
             }
         }, R.string.snackbar_details);
 
+    }
+
+    private void trackResult(){
+        boolean hasError = mCertifyError == 0 && mUploadError == 0;
+        String description = "";
+        if (mUploadError > 0) {
+            description = description + "UploadErrors: " + mUploadError;
+        }
+        if (mCertifyError > 0 ) {
+            description = description + "CertifyErrors: " + mCertifyError;
+        }
+
+        if (AnalyticsManager.analyticsManager != null) {
+            AnalyticsManager analyticsManager = AnalyticsManager.analyticsManager;
+            analyticsManager.trackResult(this.getClass().getSimpleName(),hasError, description);
+        }
     }
 
 }

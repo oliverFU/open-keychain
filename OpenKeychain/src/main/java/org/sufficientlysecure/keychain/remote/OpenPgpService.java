@@ -1040,6 +1040,7 @@ public class OpenPgpService extends Service {
             progressable = createMessengerProgressable(messenger);
         }
 
+        // TODO: Should we log the action?
         String action = data.getAction();
         switch (action) {
             case OpenPgpApi.ACTION_CHECK_PERMISSION: {
